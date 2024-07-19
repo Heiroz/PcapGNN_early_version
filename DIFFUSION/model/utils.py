@@ -60,12 +60,6 @@ class PlaceHolder:
         return self
 
 
-def assert_correctly_masked(variable, node_mask):
-    pass
-    # assert (variable * (1 - node_mask.long())).abs().max().item() < 1e-4, \
-    #     'Variables not masked properly.'
-
-
 def unnormalize(X, E, y, norm_values, norm_biases, node_mask, collapse=False):
     """
     X : node features

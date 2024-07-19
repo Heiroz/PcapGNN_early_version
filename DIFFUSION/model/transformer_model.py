@@ -105,13 +105,12 @@ class NodeEdgeBlock(nn.Module):
 
     def forward(self, X, E, y, node_mask):
         bs, n, _ = X.shape
-        x_mask = node_mask.unsqueeze(-1)        # bs, n, 1
-        e_mask1 = x_mask.unsqueeze(2)           # bs, n, 1, 1
-        e_mask2 = x_mask.unsqueeze(1)           # bs, 1, n, 1
+        x_mask = node_mask.unsqueeze(-1)
+        e_mask1 = x_mask.unsqueeze(2)
+        e_mask2 = x_mask.unsqueeze(1)
 
-        Q = self.q(X) * x_mask           # (bs, n, dx)
-        K = self.k(X) * x_mask           # (bs, n, dx)
-        utils.assert_correctly_masked(Q, x_mask)
+        Q = self.q(X) * x_mask
+        K = self.k(X) * x_mask
 
         Q = Q.reshape((Q.size(0), Q.size(1), self.n_head, self.df))
         K = K.reshape((K.size(0), K.size(1), self.n_head, self.df))
@@ -121,7 +120,6 @@ class NodeEdgeBlock(nn.Module):
 
         Y = Q * K
         Y = Y / math.sqrt(Y.size(-1))
-        utils.assert_correctly_masked(Y, (e_mask1 * e_mask2).unsqueeze(-1))
 
         E1 = self.e_mul(E) * e_mask1 * e_mask2
         E1 = E1.reshape((E.size(0), E.size(1), E.size(2), self.n_head, self.df))
@@ -137,7 +135,6 @@ class NodeEdgeBlock(nn.Module):
         newE = ye1 + (ye2 + 1) * newE
 
         newE = self.e_out(newE) * e_mask1 * e_mask2
-        utils.assert_correctly_masked(newE, e_mask1 * e_mask2)
 
         softmax_mask = e_mask2.expand(-1, n, -1, self.n_head)
         attn = masked_softmax(Y, softmax_mask, dim=2)
@@ -156,7 +153,6 @@ class NodeEdgeBlock(nn.Module):
         newX = yx1 + (yx2 + 1) * weighted_V
 
         newX = self.x_out(newX) * x_mask
-        utils.assert_correctly_masked(newX, x_mask)
 
         y = self.y_y(y)
         e_y = self.e_y(E)
