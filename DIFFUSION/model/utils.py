@@ -222,6 +222,12 @@ def sample_discrete_features(probX, probE, node_mask):
     probE = probE.reshape(bs * n * n, -1)
     num_attr_E = probE.shape[-1] // 256
     reshaped_probE = probE.view(bs * n * n * num_attr_E, 256)
+
+    row_sums = reshaped_probE.sum(dim=1, keepdim=True)
+    uniform_dist = torch.ones_like(reshaped_probE) / 256
+    reshaped_probE = torch.where(row_sums > 0, reshaped_probE, uniform_dist)
+    reshaped_probE = reshaped_probE / reshaped_probE.sum(dim=1, keepdim=True)
+    
     E_t = reshaped_probE.multinomial(1)
     E_t = E_t.view(bs, n, n, num_attr_E)
 
