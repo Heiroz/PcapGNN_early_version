@@ -92,7 +92,7 @@ def analyze_flows(flows):
 
     return flow_analysis
 
-def classify_pcap_split(pcap_file, split_count=16 * 1024):
+def classify_pcap_split(pcap_file, split_count=32 * 1024):
     packets = rdpcap(pcap_file)
     total_packets = len(packets)
     packets_per_split = total_packets // split_count

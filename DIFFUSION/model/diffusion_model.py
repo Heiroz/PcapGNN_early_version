@@ -136,7 +136,7 @@ class DenoisingDiffusion(pl.LightningModule):
 
     def on_train_epoch_end(self):
         if self.current_epoch != 39:
-            return
+            pass
         sample_graphs = []
         id = 0
         samples_left_to_generate = 100
