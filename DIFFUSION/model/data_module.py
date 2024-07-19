@@ -49,7 +49,7 @@ class GraphDataModule(pl.LightningDataModule):
         d = d / d.sum()
         return d
     
-    def node_counts(self, max_nodes_possible=2000):
+    def node_counts(self, max_nodes_possible=20000):
         all_counts = torch.zeros(max_nodes_possible)
         for loader in [self.train_dataloader()]:
             for data in loader:
