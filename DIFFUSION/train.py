@@ -37,7 +37,7 @@ class DistributionNodes:
         return log_p
     
 def main():
-    pcap_file = 'caida_small.pcap'
+    pcap_file = 'caida.pcap'
     ip_pairs_list = classify_pcap_split(pcap_file)
     data_list = []
     for ip_pairs in ip_pairs_list:

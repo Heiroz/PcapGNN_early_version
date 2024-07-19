@@ -92,7 +92,7 @@ def analyze_flows(flows):
 
     return flow_analysis
 
-def classify_pcap_split(pcap_file, split_count=8 * 30):
+def classify_pcap_split(pcap_file, split_count=8 * 1024):
     packets = rdpcap(pcap_file)
     total_packets = len(packets)
     packets_per_split = total_packets // split_count
@@ -187,7 +187,7 @@ def edge_attr(G):
     protocol_attrs = nx.get_edge_attributes(G, 'protocol')
     flow_len_attrs = nx.get_edge_attributes(G, 'flow_len')
     time_attrs = nx.get_edge_attributes(G, 'time')
-    mapping_file = 'time_index_mapping_caida_small.txt'
+    mapping_file = 'time_index_mapping_caida.txt'
     time_index_mapping = read_time_index_mapping(mapping_file)
     time_attrs = map_start_time_to_indices(time_attrs, time_index_mapping)
     num_edges = G.number_of_edges()
