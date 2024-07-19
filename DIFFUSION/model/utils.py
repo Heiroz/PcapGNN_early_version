@@ -252,13 +252,13 @@ def compute_posterior_distribution(M, M_t, Qt_M, Qsb_M, Qtb_M):
         Compute xt @ Qt.T * x0 @ Qsb / x0 @ Qtb @ xt.T
     '''
     # Flatten feature tensors
-    M = M.flatten(start_dim=1, end_dim=-2).to(torch.float32)        # (bs, N, d) with N = n or n * n
-    M_t = M_t.flatten(start_dim=1, end_dim=-2).to(torch.float32)    # same
+    M = M.flatten(start_dim=1, end_dim=-2).to(torch.float32)
+    M_t = M_t.flatten(start_dim=1, end_dim=-2).to(torch.float32)
 
-    Qt_M_T = torch.transpose(Qt_M, -2, -1)      # (bs, d, d)
+    Qt_M_T = torch.transpose(Qt_M, -2, -1)
 
-    left_term = M_t @ Qt_M_T   # (bs, N, d)
-    right_term = M @ Qsb_M     # (bs, N, d)
+    left_term = M_t @ Qt_M_T
+    right_term = M @ Qsb_M
     product = left_term * right_term    # (bs, N, d)
 
     denom = M @ Qtb_M     # (bs, N, d) @ (bs, d, d) = (bs, N, d)
