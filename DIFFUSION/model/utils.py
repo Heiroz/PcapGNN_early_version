@@ -52,9 +52,9 @@ class PlaceHolder:
         return self
 
     def mask(self, node_mask):
-        x_mask = node_mask.unsqueeze(-1)          # bs, n, 1
-        e_mask1 = x_mask.unsqueeze(2)             # bs, n, 1, 1
-        e_mask2 = x_mask.unsqueeze(1)             # bs, 1, n, 1
+        x_mask = node_mask.unsqueeze(-1)
+        e_mask1 = x_mask.unsqueeze(2)
+        e_mask2 = x_mask.unsqueeze(1)
         self.X = self.X * x_mask
         self.E = self.E * e_mask1 * e_mask2
         return self
@@ -94,10 +94,6 @@ def sample_gaussian_with_mask(size, node_mask):
 
 
 def clip_noise_schedule(alphas2, clip_value=0.001):
-    """
-    For a noise schedule given by alpha^2, this clips alpha_t / alpha_t-1. This may help improve stability during
-    sampling.
-    """
     alphas2 = np.concatenate([np.ones(1), alphas2], axis=0)
 
     alphas_step = (alphas2[1:] / alphas2[:-1])
@@ -109,10 +105,6 @@ def clip_noise_schedule(alphas2, clip_value=0.001):
 
 
 def cosine_beta_schedule(timesteps, s=0.008, raise_to_power: float = 1):
-    """
-    cosine schedule
-    as proposed in https://openreview.net/forum?id=-NEXDKk8gZ
-    """
     steps = timesteps + 2
     x = np.linspace(0, steps, steps)
     alphas_cumprod = np.cos(((x / steps) + s) / (1 + s) * np.pi * 0.5) ** 2
@@ -129,7 +121,6 @@ def cosine_beta_schedule(timesteps, s=0.008, raise_to_power: float = 1):
 
 
 def cosine_beta_schedule_discrete(timesteps, s=0.008):
-    """ Cosine schedule as proposed in https://openreview.net/forum?id=-NEXDKk8gZ. """
     steps = timesteps + 2
     x = np.linspace(0, steps, steps)
 
@@ -141,7 +132,6 @@ def cosine_beta_schedule_discrete(timesteps, s=0.008):
 
 
 def custom_beta_schedule_discrete(timesteps, average_num_nodes=50, s=0.008):
-    """ Cosine schedule as proposed in https://openreview.net/forum?id=-NEXDKk8gZ. """
     steps = timesteps + 2
     x = np.linspace(0, steps, steps)
 
@@ -152,10 +142,9 @@ def custom_beta_schedule_discrete(timesteps, average_num_nodes=50, s=0.008):
 
     assert timesteps >= 100
 
-    p = 4 / 5       # 1 - 1 / num_edge_classes
+    p = 4 / 5
     num_edges = average_num_nodes * (average_num_nodes - 1) / 2
 
-    # First 100 steps: only a few updates per graph
     updates_per_graph = 1.2
     beta_first = updates_per_graph / (p * num_edges)
 
@@ -189,7 +178,6 @@ def reverse_tensor(x):
 def sample_feature_noise(X_size, E_size, y_size, node_mask):
     """Standard normal noise for all features.
         Output size: X.size(), E.size(), y.size() """
-    # TODO: How to change this for the multi-gpu case?
     epsX = sample_gaussian(X_size)
     epsE = sample_gaussian(E_size)
     epsy = sample_gaussian(y_size)
@@ -199,7 +187,6 @@ def sample_feature_noise(X_size, E_size, y_size, node_mask):
     epsE = epsE.type_as(float_mask)
     epsy = epsy.type_as(float_mask)
 
-    # Get upper triangular part of edge noise, without main diagonal
     upper_triangular_mask = torch.zeros_like(epsE)
     indices = torch.triu_indices(row=epsE.size(1), col=epsE.size(2), offset=1)
     upper_triangular_mask[:, indices[0], indices[1], :] = 1
@@ -216,29 +203,23 @@ def sample_discrete_features(probX, probE, node_mask):
         :param proby: bs, dy_out           global features.
     '''
     bs, n, _ = probX.shape
-    # Noise X
-    # The masked rows should define probability distributions as well
+
     probX[~node_mask] = 1 / probX.shape[-1]
 
-    # Flatten the probability tensor to sample with multinomial
-    probX = probX.reshape(bs * n, -1)       # (bs * n, dx_out)
+    probX = probX.reshape(bs * n, -1)
 
-    # Sample X
     num_attr_X = probX.shape[-1] // 256
     reshaped_probX = probX.view(bs * n * num_attr_X, 256)
     X_t = reshaped_probX.multinomial(1)
     X_t = X_t.view(bs, n, num_attr_X)
 
-    # Noise E
-    # The masked rows should define probability distributions as well
     inverse_edge_mask = ~(node_mask.unsqueeze(1) * node_mask.unsqueeze(2))
     diag_mask = torch.eye(n).unsqueeze(0).expand(bs, -1, -1)
 
     probE[inverse_edge_mask] = 1 / probE.shape[-1]
     probE[diag_mask.bool()] = 1 / probE.shape[-1]
 
-    probE = probE.reshape(bs * n * n, -1)    # (bs * n * n, de_out)
-    # Sample E
+    probE = probE.reshape(bs * n * n, -1)
     num_attr_E = probE.shape[-1] // 256
     reshaped_probE = probE.view(bs * n * n * num_attr_E, 256)
     E_t = reshaped_probE.multinomial(1)
@@ -283,13 +264,13 @@ def compute_batched_over0_posterior_distribution(X_t, Qt, Qsb, Qtb):
     left_term = X_t @ Qt_T
     left_term = left_term.unsqueeze(dim=2)
 
-    right_term = Qsb.unsqueeze(1)               # bs, 1, d0, d_t-1
-    numerator = left_term * right_term          # bs, N, d0, d_t-1
+    right_term = Qsb.unsqueeze(1)
+    numerator = left_term * right_term
 
-    X_t_transposed = X_t.transpose(-1, -2)      # bs, dt, N
+    X_t_transposed = X_t.transpose(-1, -2)
 
-    prod = Qtb @ X_t_transposed                 # bs, d0, N
-    prod = prod.transpose(-1, -2)               # bs, N, d0
+    prod = Qtb @ X_t_transposed
+    prod = prod.transpose(-1, -2)
     denominator = prod.unsqueeze(-1)
     denominator[denominator == 0] = 1e-6
 
