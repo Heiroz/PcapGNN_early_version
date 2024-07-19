@@ -251,7 +251,6 @@ def compute_posterior_distribution(M, M_t, Qt_M, Qsb_M, Qtb_M):
     ''' M: X or E
         Compute xt @ Qt.T * x0 @ Qsb / x0 @ Qtb @ xt.T
     '''
-    # Flatten feature tensors
     M = M.flatten(start_dim=1, end_dim=-2).to(torch.float32)
     M_t = M_t.flatten(start_dim=1, end_dim=-2).to(torch.float32)
 
@@ -259,14 +258,12 @@ def compute_posterior_distribution(M, M_t, Qt_M, Qsb_M, Qtb_M):
 
     left_term = M_t @ Qt_M_T
     right_term = M @ Qsb_M
-    product = left_term * right_term    # (bs, N, d)
+    product = left_term * right_term
 
-    denom = M @ Qtb_M     # (bs, N, d) @ (bs, d, d) = (bs, N, d)
-    denom = (denom * M_t).sum(dim=-1)   # (bs, N, d) * (bs, N, d) + sum = (bs, N)
-    # denom = product.sum(dim=-1)
-    # denom[denom == 0.] = 1
+    denom = M @ Qtb_M
+    denom = (denom * M_t).sum(dim=-1)
 
-    prob = product / denom.unsqueeze(-1)    # (bs, N, d)
+    prob = product / denom.unsqueeze(-1)
 
     return prob
 
@@ -279,14 +276,12 @@ def compute_batched_over0_posterior_distribution(X_t, Qt, Qsb, Qtb):
         Qsb: bs, d0, d_t-1
         Qtb: bs, d0, dt.
     """
-    # Flatten feature tensors
-    # Careful with this line. It does nothing if X is a node feature. If X is an edge features it maps to
-    # bs x (n ** 2) x d
-    X_t = X_t.flatten(start_dim=1, end_dim=-2).to(torch.float32)            # bs x N x dt
 
-    Qt_T = Qt.transpose(-1, -2)                 # bs, dt, d_t-1
-    left_term = X_t @ Qt_T                      # bs, N, d_t-1
-    left_term = left_term.unsqueeze(dim=2)      # bs, N, 1, d_t-1
+    X_t = X_t.flatten(start_dim=1, end_dim=-2).to(torch.float32)
+
+    Qt_T = Qt.transpose(-1, -2)
+    left_term = X_t @ Qt_T
+    left_term = left_term.unsqueeze(dim=2)
 
     right_term = Qsb.unsqueeze(1)               # bs, 1, d0, d_t-1
     numerator = left_term * right_term          # bs, N, d0, d_t-1
@@ -295,7 +290,7 @@ def compute_batched_over0_posterior_distribution(X_t, Qt, Qsb, Qtb):
 
     prod = Qtb @ X_t_transposed                 # bs, d0, N
     prod = prod.transpose(-1, -2)               # bs, N, d0
-    denominator = prod.unsqueeze(-1)            # bs, N, d0, 1
+    denominator = prod.unsqueeze(-1)
     denominator[denominator == 0] = 1e-6
 
     out = numerator / denominator
