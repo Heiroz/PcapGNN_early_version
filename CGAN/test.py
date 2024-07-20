@@ -54,6 +54,7 @@ def read_index_timestamp_mapping(mapping_file):
                 timestamp2 = float(parts[2])
                 # 随机选择一个时间戳映射回原始时间戳
                 mapped_timestamp = random.uniform(timestamp1, timestamp2)
+                print(mapped_timestamp)
                 index_timestamp_mapping[index] = mapped_timestamp
     return index_timestamp_mapping
 
@@ -145,7 +146,7 @@ def process_condition_data(condition_datas):
     return flow_vectors, pkt_count_container
 
 def generate_pkt(flow_vectors, pkt_count_container):
-    noisy_size = 1024
+    noisy_size = 1024 * 3
     output_dim = 60
     condition_dim = 110
     file_path = 'generator.pth'
