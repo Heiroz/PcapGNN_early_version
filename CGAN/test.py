@@ -1,14 +1,11 @@
 import torch
 import csv
-import numpy as np
 from generator import Generator
-from get_flows import get_flows
-from decode import decode_tensor
 import random
 from decimal import Decimal
-from decode import decode_tensor
+import pandas as pd
 
-mappint_file_ids = 'output_ids.txt'
+mapping_file_ids = 'output_ids.txt'
 mapping_file_ports = 'output_ports.txt'
 mapping_file_time = 'output_time_intervals.txt'
 
@@ -168,28 +165,52 @@ def generate_pkt(flow_vectors, pkt_count_container):
     return generated_datas
 
 
-def postprecess(generated_datas):
-    decoded_datas = decode_tensor(generated_datas, 10)
-    num_samples = decoded_datas.size(0)
+def decode_binary_vector_to_integers(binary_vector, bit_length=256):
+    decoded_values = []
+    for i in range(0, binary_vector.size(1), bit_length):
+        binary_str = ''.join(str(int(bit)) for bit in binary_vector[0, i:i+bit_length] if str(int(bit)) in ['0', '1'])
+        if len(binary_str) > 0:
+            decoded_values.append(int(binary_str, 2))
+        else:
+            decoded_values.append(0)
+    return decoded_values
+
+def decode_tensor(encoded_tensor, bit_length=256):
+    num_samples = encoded_tensor.size(0)
+    decoded_list = []
+    
     for i in range(num_samples):
-        id_idx = decoded_datas[i, 13].item()
-        index_id_mapping = read_index_id_mapping(mappint_file_ids)
-        if id_idx not in index_id_mapping:
-            id_idx = 1
-        id = index_id_mapping[id_idx]
-        decoded_datas[i, 13] = id
-
-        time_idx = decoded_datas[i, 15].item()
-        index_time_mapping = read_index_timestamp_mapping(mapping_file_time)
-        if time_idx not in index_time_mapping:
-            time_idx = 1
-        time = index_time_mapping[time_idx]
-        decoded_datas[i, 15] = time
-        print(decoded_datas[i, 15])
-    return decoded_datas
+        decoded_list.append(decode_binary_vector_to_integers(encoded_tensor[i].unsqueeze(0), bit_length))
+    
+    return decoded_list
 
 
+def combine_ip_parts(row):
+    a1, a2, a3, a4 = row[:4]
+    return f"{a1}.{a2}.{a3}.{a4}"
 
+
+def postprocess(generated_datas, mapping_file_ids, mapping_file_time):
+    decoded_datas = decode_tensor(generated_datas, 10)
+    
+    columns = [f'col_{i}' for i in range(len(decoded_datas[0]))]
+    columns[0:4] = ['src_a1', 'src_a2', 'src_a3', 'src_a4']
+    columns[4:8] = ['dst_a1', 'dst_a2', 'dst_a3', 'dst_a4']
+    columns[13] = 'id'
+    columns[15] = 'time'
+    
+    df = pd.DataFrame(decoded_datas, columns=columns)
+    
+    index_id_mapping = read_index_id_mapping(mapping_file_ids)
+    index_time_mapping = read_index_timestamp_mapping(mapping_file_time)
+    
+    df['id'] = df['id'].apply(lambda x: index_id_mapping.get(x, index_id_mapping[1]))
+    df['time'] = df['time'].apply(lambda x: index_time_mapping.get(x, index_time_mapping[1]))
+
+    df['src_ip'] = df[['src_a1', 'src_a2', 'src_a3', 'src_a4']].apply(combine_ip_parts, axis=1)
+    df['dst_ip'] = df[['dst_a1', 'dst_a2', 'dst_a3', 'dst_a4']].apply(combine_ip_parts, axis=1)
+
+    return df
 
 
 def load_generator(checkpoint_path, noisy_size, output_dim, condition_dim):
@@ -201,23 +222,12 @@ def load_generator(checkpoint_path, noisy_size, output_dim, condition_dim):
     return generator
 
 
-def tensor_to_csv(tensor, csv_filename):
-    array = tensor.numpy()
-    with open(csv_filename, mode='w', newline='') as file:
-        writer = csv.writer(file)
-        for row in array:
-            src_ip = f"{int(row[0])}.{int(row[1])}.{int(row[2])}.{int(row[3])}"
-            dst_ip = f"{int(row[4])}.{int(row[5])}.{int(row[6])}.{int(row[7])}"
-            other_values = row[8:].tolist()
-            writer.writerow([src_ip, dst_ip] + other_values)
-
-
 def main():
     data = read_csv_to_array('generated_flows.csv')
     flow_vectors, pkt_count_container = process_condition_data(data)
     generated_datas = generate_pkt(flow_vectors, pkt_count_container)
-    decoded_datas = postprecess(generated_datas)
-    tensor_to_csv(decoded_datas, 'generated_pkt.csv')
+    decoded_datas = postprocess(generated_datas, mapping_file_ids, mapping_file_time)
+    decoded_datas.to_csv('generated_pkt.csv')
 
 
 if __name__ == "__main__":
