@@ -54,7 +54,6 @@ def read_index_timestamp_mapping(mapping_file):
                 timestamp2 = float(parts[2])
                 # 随机选择一个时间戳映射回原始时间戳
                 mapped_timestamp = random.uniform(timestamp1, timestamp2)
-                print(mapped_timestamp)
                 index_timestamp_mapping[index] = mapped_timestamp
     return index_timestamp_mapping
 
@@ -186,7 +185,7 @@ def postprecess(generated_datas):
             time_idx = 1
         time = index_time_mapping[time_idx]
         decoded_datas[i, 15] = time
-
+        print(decoded_datas[i, 15])
     return decoded_datas
 
 

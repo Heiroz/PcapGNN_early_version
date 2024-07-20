@@ -236,7 +236,6 @@ def analyze_flows(flows):
             
             pkt_tensor = torch.tensor([tos, ttl, _id, flag, time, pkt_len])
             pkt_tensor = convert_vector_to_binary(pkt_tensor)
-            # pkt_tensor = onehot_encode(pkt_tensor, 1024).to(torch.bool)
 
             remaining_features.append(pkt_tensor)
 
