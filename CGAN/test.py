@@ -210,6 +210,11 @@ def postprocess(generated_datas, mapping_file_ids, mapping_file_time):
     df['src_ip'] = df[['src_a1', 'src_a2', 'src_a3', 'src_a4']].apply(combine_ip_parts, axis=1)
     df['dst_ip'] = df[['dst_a1', 'dst_a2', 'dst_a3', 'dst_a4']].apply(combine_ip_parts, axis=1)
 
+    df.drop(columns=['src_a1', 'src_a2', 'src_a3', 'src_a4', 'dst_a1', 'dst_a2', 'dst_a3', 'dst_a4'], inplace=True)
+
+    columns_order = ['src_ip', 'dst_ip'] + [col for col in df.columns if col not in ['src_ip', 'dst_ip']]
+    df = df[columns_order]
+
     return df
 
 

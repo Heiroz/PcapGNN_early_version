@@ -1,7 +1,8 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from decode import decode_tensor
+from tqdm import tqdm
+
 class CGANTrainer:
     def __init__(self, generator, discriminator, data_loader, noisy_dim, num_epochs=50, lr=0.0002, beta1=0.5, beta2=0.999):
         self.generator = generator
@@ -23,7 +24,10 @@ class CGANTrainer:
 
     def train(self):
         for epoch in range(self.num_epochs):
-            for i, (condition_vector, real_data) in enumerate(self.data_loader):
+            # 使用 tqdm 包装 data_loader 以显示进度条
+            progress_bar = tqdm(self.data_loader, desc=f'Epoch [{epoch+1}/{self.num_epochs}]', leave=False)
+
+            for i, (condition_vector, real_data) in enumerate(progress_bar):
                 real_data = real_data.to(self.device)
                 condition_vector = condition_vector.to(self.device)
                 self.discriminator.zero_grad()
@@ -44,7 +48,6 @@ class CGANTrainer:
                 expanded_condition_vector = expanded_condition_vector.reshape(-1, expanded_condition_vector.shape[2])
 
                 output_real = self.discriminator(real_data, expanded_condition_vector)
-
                 output_fake = self.discriminator(fake_data.detach(), expanded_condition_vector)
                 loss_D_real = self.criterion(output_real, labels_real)
                 loss_D_fake = self.criterion(output_fake, labels_fake)
@@ -68,12 +71,8 @@ class CGANTrainer:
                 loss_G.backward()
                 self.optimizer_G.step()
 
-                if (i + 1) % 100 == 0:
-                    print(f"Epoch [{epoch+1}/{self.num_epochs}], Step [{i+1}/{len(self.data_loader)}], "
-                        f"Loss D: {loss_D.item():.4f}, Loss G: {loss_G.item():.4f}")
-                    raw_data = decode_tensor(real_data, 10)
-                    generated_data = decode_tensor(fake_data, 10)
-                    print(f"raw_data: {raw_data}")
-                    print(f"generated_data: {generated_data}")
+                # 更新进度条描述信息
+                progress_bar.set_postfix({"Loss D": loss_D.item(), "Loss G": loss_G.item()})
+
         torch.save(self.generator.state_dict(), f'generator.pth')
         print("Training finished.")
